@@ -1,0 +1,5 @@
+add_p4(ddos ddos/ddos.p4)
+add_p4(synflood synflood/synflood.p4)
+add_p4(portscan portscan/portscan.p4)
+add_p4(superspreader superspreader/superspreader.p4)
+add_p4(newconn newconn/newconn.p4)

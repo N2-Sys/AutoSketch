@@ -1,0 +1,6 @@
+super_spreader[precision_min=0.9, recall_min=0.9, confidence=0.9] = PacketStream("super_spreader")
+                    .distinct(distinct_keys=["ipv4.dst_addr", "ipv4.src_addr"])
+                    .map(map_keys=["ipv4.src_addr", "count"], new_import={"count": 1})
+                    .reduce(reduce_keys=["ipv4.src_addr"], result="count")
+                    .filter(left_value="count", op="ge", right_value=200)
+                    .distinct(distinct_keys=["ipv4.src_addr"])

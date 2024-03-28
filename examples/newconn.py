@@ -1,0 +1,7 @@
+newconn[precision_min=0.9, recall_min=0.9, confidence=0.9] = PacketStream("newconn")
+            .filter(left_value="ipv4.protocol", op="eq", right_value="IP_PROTOCOLS_TCP")
+            .filter(left_value="tcp.flags", op="eq", right_value="TCP_FLAG_SYN")
+            .map(map_keys=["ipv4.dst_addr", "count"], new_import={"count": 1})
+            .reduce(reduce_keys=["ipv4.dst_addr"], result="count")
+            .filter(left_value="count", op="ge", right_value=50)
+            .distinct(distinct_keys=["ipv4.dst_addr"])

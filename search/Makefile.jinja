@@ -1,0 +1,15 @@
+CXXFLAGS += -std=c++17 -w
+CXXFLAGS += -I ~/.local/include
+CXXFLAGS += -I {{ includePath }}
+LDFLAGS += -L ~/.local/lib -lspdlog
+LDFLAGS += -ljsoncpp
+LDFLAGS += -pthread -lpthread
+
+{{progName}}:	{{progName}}.cpp
+	$(CXX) $(CXXFLAGS) -o {{progName}} {{progName}}.cpp $(LDFLAGS)
+search: {{progName}}
+	./{{progName}} conf.json --search app-conf.json
+verify: {{progName}}
+	./{{progName}} conf.json --verify app-conf.json
+clean:
+	rm {{progName}}

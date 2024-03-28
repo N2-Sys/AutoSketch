@@ -1,0 +1,168 @@
+#include <iostream>
+#include <fstream>
+
+#include "Query.hpp"
+#include "Register.hpp"
+#include "Conf.hpp"
+
+#include <spdlog/cfg/env.h>
+
+constexpr int32_t UNUSUAL_EGRESS_PORT = 0;
+
+{% for k, v in s._idxTypes.items() -%}
+{% if v is string -%}
+using Idx_{{k.get_id()}} = {{v}};
+
+{% else -%}
+struct Idx_{{k.get_id()}} {
+{%- for x in v %}
+  {{ x }}
+{%- endfor %}
+} __attribute__((packed));
+
+{% endif -%}
+{% endfor -%}
+{% if s._resKeyType is string -%}
+using ResKey = {{s._resKeyType}};
+
+{% else -%}
+struct ResKey {
+{%- for x in s._resKeyType %}
+  {{ x }}
+{%- endfor %}
+} __attribute__((packed));
+
+{% endif -%}
+class {{ s._queryName }} : public {{ s._baseQuery }} {
+  class AppInstance : public AppInstanceBase {
+    friend class {{ s._queryName }};
+
+    {% for v in s._regDefs -%}
+    {{ v }}
+    {% endfor -%}
+    HashSet<ResKey> resKeys_;
+
+  protected:
+    void process(PktInfo pkt) override {
+      {%- for v in s._valDefs %}
+      {{ v }}
+      {%- endfor %}
+      {% for v in s._tranStmts %}
+      {{ v }}
+      {%- endfor %}
+
+      {{ s._stmts.replace('\n', '\n      ')[:-7] }}
+    }
+
+    Result switchWin() override {
+      {% for v in s._collectWin -%}
+      {{ v }}
+      {% endfor %}
+      {% for v in s._regReset -%}
+      {{ v }}
+      {% endfor %}
+      return res;
+    }
+  };
+
+protected:
+  std::unique_ptr<AppInstanceBase> createInstanceBaseline() override {
+    auto p = std::make_unique<AppInstance>();
+    {% for v in s._regCreateBaseline -%}
+    {{ v }}
+    {% endfor -%}
+    return p;
+  }
+
+  std::unique_ptr<AppInstanceBase> createInstance(AppConf c) override {
+    auto p = std::make_unique<AppInstance>();
+    {% for v in s._regCreate -%}
+    {{ v }}
+    {% endfor -%}
+    return p;
+  }
+
+public:
+  using {{s._baseQuery}}::{{s._baseQueryInit}};
+};
+
+int main(int argc, char **argv) {
+  try {
+    spdlog::cfg::load_env_levels();
+
+    if (argc != 4) {
+      std::cerr << fmt::format("usage: {} <config> <--search|--verify> <app-config>\n", argv[0]);
+      return 1;
+    }
+
+    Json::Value jConf;
+    {
+      std::ifstream fs{argv[1]};
+      if (!(fs >> jConf))
+        throw std::runtime_error("invalid json format");
+    }
+
+    if (strcmp(argv[2], "--search") == 0) {
+      auto sConf = jConf["search"];
+      auto traceConf = fromJson<TraceConf>(sConf["trace"]);
+      auto evalConf = fromJson<{{ s._evalConfType }}>(sConf["eval"]);
+      auto searchConf = fromJson<SearchConf>(sConf["search"]);
+
+      Search<{{ s._regNum }}> search(std::make_unique<{{ s._queryName }}>(evalConf), traceConf, searchConf);
+      auto appConf = search.run();
+
+      Json::Value jAppConf{Json::objectValue};
+      {%- for v in s._regs %}
+      jAppConf["{{ v.get_id() }}"] = toJson(appConf[{{loop.index0}}]);
+      {%- endfor %}
+
+      Json::StreamWriterBuilder writerBuilder;
+      writerBuilder["indentation"] = "  ";
+      writerBuilder["enableYAMLCompatibility"] = true;
+      std::unique_ptr<Json::StreamWriter> writer(writerBuilder.newStreamWriter());
+      writer->write(jAppConf, &std::cout);
+      std::cout << '\n';
+      {
+        std::ofstream fs(argv[3]);
+        writer->write(jAppConf, &fs);
+        fs << '\n';
+        if (!fs)
+          throw std::runtime_error("output file error");
+      }
+      return 0;
+
+    } else if (strcmp(argv[2], "--verify") == 0) {
+      auto vConf = jConf["verify"];
+      auto traceConf = fromJson<TraceConf>(vConf["trace"]);
+      auto evalConf = fromJson<{{ s._evalConfType }}>(jConf["search"]["eval"]);
+      // auto jAppConf = vConf["conf"];
+      Json::Value jAppConf;
+      {
+        std::ifstream fs{argv[3]};
+        if (!(fs >> jAppConf))
+          throw std::runtime_error("invalid json format for app config");
+      }
+
+      {{ s._queryName }}::AppConf appConf;
+      {%- for v in s._regs %}
+      appConf[{{loop.index0}}] = fromJson<RegConf>(jAppConf["{{ v.get_id() }}"]);
+      {%- endfor %}
+
+      auto query = std::make_unique<{{ s._queryName }}>(evalConf);
+      query->runBaseline(traceConf);
+      bool succ = query->eval(traceConf, appConf);
+      std::cout << (succ ? "success\n" : "failure\n");
+      return 0;
+
+    } else {
+      std::cerr << fmt::format("invalid option '{}'\n", argv[2]);
+      return 1;
+    }
+  } catch (std::runtime_error &e) {
+    spdlog::error(e.what());
+  } catch (Json::RuntimeError &e) {
+    spdlog::error(e.what());
+  }
+
+  return 0;
+}

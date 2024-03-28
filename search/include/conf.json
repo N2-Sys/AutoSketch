@@ -1,0 +1,48 @@
+{
+  "search":
+  {
+    "trace":
+    {
+      "path": "/data/OmniWindow-trace/trace.bin",
+      "nEpoch": 10,
+      "interval": 0.5
+    },
+    "eval":
+    {
+      "precisionMin": 0.9,
+      "recallMin": 0.9,
+      "confidence": 0.85
+    },
+    "search":
+    {
+      "nThreads": 32,
+      "aluMax": 8,
+      "pageMax": 32,
+      "maxStagePerOp": 1,
+      "alpha": 0.4,
+      "beta": 0.6
+    }
+  },
+  "verify":
+  {
+    "trace":
+    {
+      "path": "/data/OmniWindow-trace/trace.bin",
+      "nEpoch": 10,
+      "interval": 0.5
+    },
+    "conf":
+    {
+      "table_distinct_table_9c10":
+      {
+        "d": 2,
+        "w": 4
+      },
+      "table_reduce_table_d0a0":
+      {
+        "d": 3,
+        "w": 2
+      }
+    }
+  }
+}

@@ -1,0 +1,42 @@
+{
+  "search":
+  {
+    "trace":
+    {
+      "path": "/home/kira/AutoSketch/data/search_trace.bin",
+      "nEpoch": 50,
+      "interval": 0.5
+    },
+    "eval":
+    {
+      {%- if s._evalConfType == "RecallPrecisionConf" %}
+      "precisionMin": {{ req.get('precision_min', 'null') }},
+      "recallMin": {{ req.get('recall_min', 'null') }},
+      "confidence": {{ req.get('confidence', 'null') }}
+      {%- elif s._evalConfType == "AREConf" %}
+      "areMax": {{ req.get('ARE_max', 'null') }},
+      "precisionMin": {{ req.get('precision_min', 'null') }},
+      "recallMin": {{ req.get('recall_min', 'null') }},
+      "confidence": {{ req.get('confidence', 'null') }}
+      {%- endif %}
+    },
+    "search":
+    {
+      "nThreads": 32,
+      "aluMax": 4,
+      "pageMax": 32,
+      "maxStagePerOp": 1,
+      "alpha": 0.4,
+      "beta": 0.6
+    }
+  },
+  "verify":
+  {
+    "trace":
+    {
+      "path": "/home/kira/AutoSketch/data/verify_trace.bin",
+      "nEpoch": 100,
+      "interval": 0.5
+    }
+  }
+}
